@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
                 topTrendsSources:    research.trends.sources.slice(0, 3),
                 rawSynthesis:        research.rawSynthesis, // Síntesis 360 para que la lea el Engine LLM
             },
-        });
+        }, { headers: { 'Cache-Control': 'no-store' } });
 
     } catch (e: unknown) {
         const message = e instanceof Error ? e.message : 'Error desconocido de red';
