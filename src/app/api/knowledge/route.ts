@@ -5,8 +5,6 @@ import { saveKnowledge, searchKnowledge, getAllKnowledge, deleteKnowledge, updat
 export async function GET(req: NextRequest) {
     const denied = requireApiKey(req);
     if (denied) return denied;
-    const denied = requireApiKey(req);
-    if (denied) return denied;
     try {
         const query = req.nextUrl.searchParams.get('q');
         if (query) {
@@ -21,8 +19,6 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-    const denied = requireApiKey(req);
-    if (denied) return denied;
     const denied = requireApiKey(req);
     if (denied) return denied;
     try {
@@ -43,8 +39,6 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
     const denied = requireApiKey(req);
     if (denied) return denied;
-    const denied = requireApiKey(req);
-    if (denied) return denied;
     try {
         const id = req.nextUrl.searchParams.get('id');
         if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
@@ -56,8 +50,6 @@ export async function DELETE(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-    const denied = requireApiKey(req);
-    if (denied) return denied;
     const denied = requireApiKey(req);
     if (denied) return denied;
     try {
