@@ -1,7 +1,10 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { requireApiKey } from '@/lib/api-auth';
 import { listSkills, installSkill, deleteSkill } from '@/lib/tools';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+    const denied = requireApiKey(req);
+    if (denied) return denied;
     try {
         const skills = await listSkills();
         return NextResponse.json({ skills });
@@ -11,6 +14,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+    const denied = requireApiKey(req);
+    if (denied) return denied;
     try {
         const body = await req.json();
         const skill = await installSkill(body);
@@ -21,6 +26,8 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+    const denied = requireApiKey(req);
+    if (denied) return denied;
     try {
         const { searchParams } = new URL(req.url);
         const id = searchParams.get('id');
