@@ -5,6 +5,9 @@
  * Strategy: Sliding window per IP
  *   - /api/predict  → 5 requests / 60s  (heavy: Tavily + LLM + Monte Carlo)
  *   - /api/predict/status → 120 requests / 60s  (polling endpoint)
+ *   - /api/chat → 30 requests / 60s
+ *   - /api/tts → 10 requests / 60s
+ *   - /api/research → 3 requests / 60s
  *
  * Install deps:
  *   npm install @upstash/ratelimit @upstash/redis
@@ -36,6 +39,30 @@ export const statusLimiter = new Ratelimit({
   limiter: Ratelimit.slidingWindow(120, "60 s"),
   analytics: true,
   prefix: "og:rl:status",
+});
+
+/** Public chat endpoint — protects provider spend and streaming capacity. */
+export const chatLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(30, "60 s"),
+  analytics: true,
+  prefix: "og:rl:chat",
+});
+
+/** Speech synthesis endpoint — caps external TTS requests. */
+export const ttsLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(10, "60 s"),
+  analytics: true,
+  prefix: "og:rl:tts",
+});
+
+/** Deep research endpoint — limits high-cost parallel searches. */
+export const researchLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(3, "60 s"),
+  analytics: true,
+  prefix: "og:rl:research",
 });
 
 // ─── IP extraction (works behind Vercel's edge proxy) ─────────────────────────
