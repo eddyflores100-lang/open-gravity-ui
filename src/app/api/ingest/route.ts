@@ -10,8 +10,6 @@ import { injectLeadAsNode, injectFileAsNode } from '@/lib/knowledge_graph';
 export async function POST(req: Request) {
     const denied = requireApiKey(req);
     if (denied) return denied;
-    const denied = requireApiKey(req);
-    if (denied) return denied;
     try {
         const body: { type: string; data: any } = await req.json();
         const { type, data } = body;
