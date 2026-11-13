@@ -3,10 +3,15 @@
  * Permite que scripts externos (ej: Lead Sniper) inyecten datos al Knowledge Graph.
  */
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { requireApiKey } from '@/lib/api-auth';
 import { injectLeadAsNode, injectFileAsNode } from '@/lib/knowledge_graph';
 
 export async function POST(req: Request) {
+    const denied = requireApiKey(req);
+    if (denied) return denied;
+    const denied = requireApiKey(req);
+    if (denied) return denied;
     try {
         const body: { type: string; data: any } = await req.json();
         const { type, data } = body;
