@@ -1,0 +1,26 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+    open-pull-requests-limit: 8
+    groups:
+      next-react:
+        patterns:
+          - "next"
+          - "react"
+          - "react-dom"
+      ai-providers:
+        patterns:
+          - "groq-sdk"
+          - "msedge-tts"
+          - "@upstash/*"
+      tooling:
+        patterns:
+          - "eslint"
+          - "eslint-config-next"
+          - "typescript"
+          - "vitest"
