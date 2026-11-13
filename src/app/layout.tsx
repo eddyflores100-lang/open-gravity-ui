@@ -9,8 +9,20 @@ export const revalidate = 0;
 export const fetchCache = 'force-no-store';
 
 export const metadata: Metadata = {
-  title: 'OpenGravity Dashboard',
-  description: 'AI Personal Agent Command Center',
+  title: {
+    default: 'OpenGravity | Agent Workspace',
+    template: '%s | OpenGravity',
+  },
+  description: 'Private operator dashboard for OpenGravity agent workflows, research and startup simulations.',
+  robots: {
+    index: false,
+    follow: false,
+  },
+  openGraph: {
+    type: 'website',
+    title: 'OpenGravity | Agent Workspace',
+    description: 'Private operator dashboard for OpenGravity agent workflows.',
+  },
 }
 
 export default function RootLayout({
@@ -19,7 +31,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="es">
       <body className={inter.className}>{children}</body>
     </html>
   )
