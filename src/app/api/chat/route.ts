@@ -1,13 +1,29 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { checkRateLimit, chatLimiter } from '@/lib/rate_limiter';
+import { sanitizeResponse } from '@/lib/security';
 import { buildStreamPayload } from '@/lib/ai_logic';
 
 export const runtime = 'nodejs'; // Ensure Node.js runtime for streaming
 
 export async function POST(req: NextRequest) {
+    const limited = await checkRateLimit(req, chatLimiter);
+    if (limited) return limited;
+
     try {
-        const { messages } = await req.json();
-        if (!messages || messages.length === 0) {
-            return new Response(JSON.stringify({ error: "No messages provided" }), { status: 400 });
+        const body = await req.json();
+        const messages = body?.messages;
+        if (!Array.isArray(messages) || messages.length === 0 || messages.length > 20) {
+            return NextResponse.json({ error: "Invalid message list" }, { status: 400 });
+        }
+        const validMessages = messages.every((message) =>
+            message &&
+            typeof message === 'object' &&
+            (message.role === 'user' || message.role === 'assistant') &&
+            typeof message.content === 'string' &&
+            message.content.length <= 12_000
+        );
+        if (!validMessages) {
+            return NextResponse.json({ error: "Invalid message payload" }, { status: 400 });
         }
 
         const { apiUrl, headers, body, engine } = await buildStreamPayload(messages);
@@ -23,7 +39,7 @@ export async function POST(req: NextRequest) {
             const errText = await upstreamRes.text();
             console.error('UPSTREAM_ERROR:', upstreamRes.status, errText);
             // Return a non-streaming fallback error
-            const errorPayload = `data: ${JSON.stringify({ content: "❌ Error del motor: " + errText.substring(0, 200), engine })}\n\ndata: [DONE]\n\n`;
+            const errorPayload = `data: ${JSON.stringify({ content: "❌ Error del motor: " + sanitizeResponse(errText).substring(0, 200), engine })}\n\ndata: [DONE]\n\n`;
             return new Response(errorPayload, {
                 headers: {
                     'Content-Type': 'text/event-stream',
@@ -74,6 +90,6 @@ export async function POST(req: NextRequest) {
     } catch (e: unknown) {
         const message = e instanceof Error ? e.message : 'Unknown error';
         console.error('CHAT_API_ERROR:', message);
-        return new Response(JSON.stringify({ error: message }), { status: 500 });
+        return NextResponse.json({ error: 'Chat service unavailable' }, { status: 500, headers: { 'Cache-Control': 'no-store' } });
     }
 }
