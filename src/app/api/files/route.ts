@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireApiKey } from '@/lib/api-auth';
 import { saveFile, readFile, listFiles, deleteFile, updateFile } from '@/lib/tools';
 
 export async function GET(req: NextRequest) {
+    const denied = requireApiKey(req);
+    if (denied) return denied;
+    const denied = requireApiKey(req);
+    if (denied) return denied;
     try {
         const id = req.nextUrl.searchParams.get('id');
         if (id) {
@@ -18,6 +23,10 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+    const denied = requireApiKey(req);
+    if (denied) return denied;
+    const denied = requireApiKey(req);
+    if (denied) return denied;
     try {
         const body = await req.json();
         const result = await saveFile(
@@ -33,6 +42,10 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
+    const denied = requireApiKey(req);
+    if (denied) return denied;
+    const denied = requireApiKey(req);
+    if (denied) return denied;
     try {
         const body = await req.json();
         if (!body.id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
@@ -44,6 +57,10 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+    const denied = requireApiKey(req);
+    if (denied) return denied;
+    const denied = requireApiKey(req);
+    if (denied) return denied;
     try {
         const id = req.nextUrl.searchParams.get('id');
         if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
