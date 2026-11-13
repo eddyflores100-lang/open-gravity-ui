@@ -1,21 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { runDeepResearch } from '@/lib/skill_executor';
+import { checkRateLimit, researchLimiter } from '@/lib/rate_limiter';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60; // Mayor límite de timeout debido al paralelismo
 
 export async function POST(req: NextRequest) {
-    try {
-        const { topic, context } = await req.json();
+    const limited = await checkRateLimit(req, researchLimiter);
+    if (limited) return limited;
 
-        if (!topic) {
+    try {
+        const body = await req.json();
+        const topic = typeof body?.topic === 'string' ? body.topic.trim() : '';
+        const context = typeof body?.context === 'string' ? body.context.trim() : '';
+
+        if (!topic || topic.length > 2_000 || context.length > 4_000) {
             return NextResponse.json(
-                { error: 'Se requiere el parámetro "topic" (tema a investigar).' },
+                { error: 'Topic (1–2000 chars) and context (0–4000 chars) are required.' },
                 { status: 400 }
             );
         }
 
-        console.log(`[DeepResearch API] Investigando: "${topic}" | Contexto: "${context || 'N/A'}"`);
+        console.info('[DeepResearch API] request accepted', { topicChars: topic.length, contextChars: context.length });
 
         // FASE 1: Research Agent — 5 ángulos de investigación paralelos
         const research = await runDeepResearch(topic, context || "");
@@ -39,11 +45,11 @@ export async function POST(req: NextRequest) {
                 topTrendsSources:    research.trends.sources.slice(0, 3),
                 rawSynthesis:        research.rawSynthesis, // Síntesis 360 para que la lea el Engine LLM
             },
-        });
+        }, { headers: { 'Cache-Control': 'no-store' } });
 
     } catch (e: unknown) {
         const message = e instanceof Error ? e.message : 'Error desconocido de red';
         console.error('[DeepResearch API] Error:', message);
-        return NextResponse.json({ error: message }, { status: 500 });
+        return NextResponse.json({ error: 'Research service unavailable' }, { status: 500, headers: { 'Cache-Control': 'no-store' } });
     }
 }

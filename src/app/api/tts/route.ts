@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts';
+import { checkRateLimit, ttsLimiter } from '@/lib/rate_limiter';
 
 /**
  * Alice_Neural_Studio v3.5
@@ -7,9 +8,17 @@ import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts';
  */
 
 export async function POST(req: NextRequest) {
+    const limited = await checkRateLimit(req, ttsLimiter);
+    if (limited) return limited;
+
     try {
-        const { text, voice = 'es-CO-SalomeNeural' } = await req.json();
-        console.log(`[TTS] Request received for text: "${text.substring(0, 50)}..." with voice: ${voice}`);
+        const body = await req.json();
+        const text = typeof body?.text === 'string' ? body.text.trim() : '';
+        const voice = typeof body?.voice === 'string' ? body.voice.slice(0, 80) : 'es-CO-SalomeNeural';
+        if (!text || text.length > 2_000) {
+            return NextResponse.json({ error: 'Text must contain 1–2000 characters' }, { status: 400 });
+        }
+        console.info('[TTS] request accepted', { chars: text.length, voice });
 
         // 1. Prioridad: Microsoft Edge Neural TTS
         try {
@@ -77,16 +86,16 @@ export async function POST(req: NextRequest) {
             if (response.ok) {
                 const audioBuffer = await response.arrayBuffer();
                 return new NextResponse(audioBuffer, {
-                    headers: { 'Content-Type': 'audio/mpeg' },
+                    headers: { 'Content-Type': 'audio/mpeg', 'Cache-Control': 'no-store' },
                 });
             }
         }
 
-        return NextResponse.json({ error: "No neural engine available" }, { status: 503 });
+        return NextResponse.json({ error: "No neural engine available" }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
 
     } catch (error: unknown) {
         const err = error as Error;
         console.error("[TTS] Fatal error:", err.message);
-        return NextResponse.json({ error: err.message }, { status: 500 });
+        return NextResponse.json({ error: 'Speech service unavailable' }, { status: 500, headers: { 'Cache-Control': 'no-store' } });
     }
 }

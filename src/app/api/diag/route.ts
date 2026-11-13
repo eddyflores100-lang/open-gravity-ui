@@ -1,50 +1,61 @@
+import { timingSafeEqual } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET() {
-    // LLAVES HARDCODEADAS PARA PRUEBA REAL
-    const cfAcc = "faf93cd2a0d373573de88591bcc95323";
-    const cfTok = "WNdzigd4NGha4SbQ4b1ZEn1bO9axJkfs67krrgyn";
+export const runtime = 'nodejs';
+
+function authorized(req: NextRequest): boolean {
+    const expected = process.env.OPEN_GRAVITY_DIAG_TOKEN;
+    const supplied = req.headers.get('authorization')?.match(/^Bearer\s+(.+)$/i)?.[1] ?? '';
+    if (!expected || !supplied) return false;
+
+    const expectedBytes = Buffer.from(expected, 'utf8');
+    const suppliedBytes = Buffer.from(supplied, 'utf8');
+    return suppliedBytes.length === expectedBytes.length && timingSafeEqual(suppliedBytes, expectedBytes);
+}
+
+export async function GET(req: NextRequest) {
+    const noStore = { headers: { 'Cache-Control': 'no-store' } };
+    if (!authorized(req)) {
+        return NextResponse.json({ error: 'Not found' }, { ...noStore, status: 404 });
+    }
+
+    const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+    const apiToken = process.env.CLOUDFLARE_API_TOKEN;
+    if (!accountId || !apiToken) {
+        return NextResponse.json({ error: 'Diagnostic provider is not configured' }, { ...noStore, status: 503 });
+    }
 
     const tests = [
-        { name: "Workers AI (Llama test)", model: "@cf/meta/llama-3-8b-instruct", payload: { messages: [{ role: 'user', content: 'hi' }] } },
-        { name: "Workers AI (Speech test)", model: "@cf/deepgram/aura-2-es", payload: { text: "hola" } },
-        { name: "Workers AI (MeloTTS test)", model: "@cf/myshell-ai/melotts", payload: { text: "hola", lang: "es" } }
+        { name: 'Workers AI text', model: '@cf/meta/llama-3-8b-instruct', payload: { messages: [{ role: 'user', content: 'health check' }] } },
+        { name: 'Workers AI speech', model: '@cf/deepgram/aura-2-es', payload: { text: 'health check' } },
+        { name: 'Workers AI TTS', model: '@cf/myshell-ai/melotts', payload: { text: 'health check', lang: 'es' } },
     ];
 
     const results = [];
-
     for (const test of tests) {
+        const startedAt = Date.now();
         try {
-            const start = Date.now();
-            const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${cfAcc}/ai/run/${test.model}`, {
+            const response = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${test.model}`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${cfTok}`,
-                    'Content-Type': 'application/json'
+                    Authorization: `Bearer ${apiToken}`,
+                    'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(test.payload)
+                body: JSON.stringify(test.payload),
+                signal: AbortSignal.timeout(15_000),
             });
-            const success = res.ok;
-            const resData = await res.text();
-
             results.push({
                 test: test.name,
                 model: test.model,
-                status: res.status,
-                ok: success,
-                type: res.headers.get('content-type'),
-                response_sample: resData.substring(0, 200),
-                latency: `${Date.now() - start}ms`
+                status: response.status,
+                ok: response.ok,
+                latencyMs: Date.now() - startedAt,
             });
-        } catch (e: any) {
-            results.push({ test: test.name, error: e.message });
+            await response.body?.cancel();
+        } catch {
+            results.push({ test: test.name, model: test.model, ok: false, error: 'Provider request failed', latencyMs: Date.now() - startedAt });
         }
     }
 
-    return NextResponse.json({
-        timestamp: new Date().toISOString(),
-        account: cfAcc,
-        token_preview: cfTok.substring(0, 5) + "...",
-        results
-    });
+    return NextResponse.json({ timestamp: new Date().toISOString(), results }, noStore);
 }

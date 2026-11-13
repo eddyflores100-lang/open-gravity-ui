@@ -1,26 +1,16 @@
-import { getIsMock, db } from '@/lib/firebaseAdmin';
+import { NextResponse } from 'next/server';
 
 export async function GET() {
-    const isMock = getIsMock();
-    let sampleData = null;
-    let error = null;
+    const storageConfigured = Boolean(
+        process.env.UPSTASH_REDIS_REST_URL &&
+        process.env.UPSTASH_REDIS_REST_TOKEN
+    );
 
-    if (!isMock) {
-        try {
-            const snap = await db.collection('knowledge').limit(1).get();
-            sampleData = snap.size;
-        } catch (e: any) {
-            error = e.message;
+    return NextResponse.json(
+        { ok: true, service: 'open-gravity-ui', storageConfigured },
+        {
+            status: storageConfigured ? 200 : 503,
+            headers: { 'Cache-Control': 'no-store' },
         }
-    }
-
-    return new Response(JSON.stringify({
-        isMock,
-        sampleData,
-        error,
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        hasKey: !!process.env.FIREBASE_PRIVATE_KEY
-    }), {
-        headers: { 'Content-Type': 'application/json' }
-    });
+    );
 }
