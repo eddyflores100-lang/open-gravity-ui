@@ -3,7 +3,7 @@
  * Permite que scripts externos (ej: Lead Sniper) inyecten datos al Knowledge Graph.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { requireApiKey } from '@/lib/api-auth';
 import { injectLeadAsNode, injectFileAsNode } from '@/lib/knowledge_graph';
 
