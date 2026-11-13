@@ -31,6 +31,8 @@ jobs:
           cache: npm
       - name: Resolve declared dependencies
         run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - name: Apply non-breaking dependency security fixes
+        run: npm audit fix --package-lock-only --ignore-scripts --no-fund
       - name: Commit lockfile if changed
         env:
           HEAD_REF: ${{ github.head_ref }}
